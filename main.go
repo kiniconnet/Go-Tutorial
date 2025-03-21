@@ -17,7 +17,7 @@ import (
 
 // Todo Data Structure
 type Todo struct {
-	ID        primitive.ObjectID `json:"_id,omitempty" bson:"id"`
+	ID        primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	Body      string             `json:"body" bson:"body"`
 	Completed bool               `json:"completed" bson:"completed"`
 }
@@ -27,9 +27,12 @@ var collection *mongo.Collection
 func main() {
 
 	// Load the environment variable
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal(err)
+	if os.Getenv("ENV") != "production" {
+		// Load the environment variable if the environment is not production
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	MONGODB_URI := os.Getenv("MONGODB_URI")
@@ -54,12 +57,21 @@ func main() {
 
 	app := fiber.New()
 
+	/* app.Use(cors.New(cors.Config{
+		AllowOrigins: "http://localhost:5173/",
+		AllowHeaders: "Origin, Content-Type, Accept",
+	})) */
+
 	app.Get("/api/todos", getTodos)
 	app.Post("/api/todos", createTodos)
 	app.Patch("/api/todos/:id", editTodos)
 	app.Delete("/api/todos/:id", deleteTodos)
 
 	PORT := os.Getenv("PORT")
+
+	if os.Getenv("ENV") == "production" {
+		app.Static("/", "./client/dist")
+	}
 
 	err = app.Listen(fmt.Sprintf(":%v", PORT))
 	if err != nil {
@@ -158,9 +170,9 @@ func deleteTodos(c *fiber.Ctx) error {
 	}
 
 	// Checking if any Documented was deleted
-	if deleteResult.DeletedCount == 0{
+	if deleteResult.DeletedCount == 0 {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
-			"error":"Document not found",
+			"error": "Document not found",
 		})
 	}
 
